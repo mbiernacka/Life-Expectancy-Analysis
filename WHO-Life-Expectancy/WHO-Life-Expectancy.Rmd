@@ -1,0 +1,39 @@
+---
+title: "Life-Expectancy-Analysis"
+author: "Milena Biernacka, Agata Dratwa"
+date: '2023-05-19'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(corrplot)
+```
+
+Reading data:
+```{r}
+data <- read.csv("Life-Expectancy-Data.csv")
+head(data)
+dim(data)
+str(data)
+```
+
+Dropping columns containing NA values:
+```{r}
+data <- na.omit(data)
+dim(data)
+```
+
+Dropping columns 'Country' and 'Year':
+```{r}
+data <- data[, -c(1,2)]
+head(data)
+```
+Correlation between numerical attributes:
+```{r}
+cor(data[,-1])
+```
+```{r}
+corrplot(cor(data[,-1]), method = 'color')
+```
+
