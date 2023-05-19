@@ -37,3 +37,53 @@ cor(data[,-1])
 corrplot(cor(data[,-1]), method = 'color')
 ```
 
+
+### Building linear regression model:
+
+
+```{r}
+model <- lm(data$Life.expectancy ~ ., data = data)
+```
+```{r}
+model
+model$coefficients
+```
+```{r}
+summary(model)
+```
+
+Based on p-value statistically significant are:
+
+- Status
+- Adult Mortality
+- Indant deaths
+- Alcohol
+- Percentage expenditure
+- BMI
+- Under five deaths
+- Total.expenditure 
+- Diphtheria
+- HIV AIDS
+- Income
+- Schooling
+
+It means that we should remove other variables from our model.
+
+Positive coefficients:
+
+- Indant deaths
+- Percentage expenditure
+- Income
+- Schooling
+- Diphtheria
+- Total.expenditure 
+- BMI
+
+Negative coefficients:
+
+- Status
+- Adult Mortality
+- HIV AIDS
+- Alcohol
+- Under five deaths
+
