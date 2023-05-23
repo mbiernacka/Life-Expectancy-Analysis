@@ -42,14 +42,22 @@ corrplot(cor(data[,-1]), method = 'color')
 
 ### Building linear regression model:
 
+Splitting data into training and testing sets:
 
 ```{r}
-model <- lm(data$Life.expectancy ~ ., data = data)
+set.seed(213)
+train_indices <- sample(nrow(data), nrow(data) * 0.8)
+train_data <- data[train_indices, ]
+test_data <- data[-train_indices, ]
 ```
 
 ```{r}
-model
-model$coefficients
+model <- lm(train_data$Life.expectancy ~ ., data = train_data)
+```
+
+```{r}
+#model
+#model$coefficients
 ```
 ```{r}
 summary(model)
@@ -57,9 +65,8 @@ summary(model)
 
 Based on p-value statistically significant are:
 
-- Status
 - Adult Mortality
-- Indant deaths
+- Infant deaths
 - Alcohol
 - Percentage expenditure
 - BMI
@@ -74,7 +81,7 @@ It means that we should remove other variables from our model.
 
 Positive coefficients:
 
-- Indant deaths
+- Infant deaths
 - Percentage expenditure
 - Income
 - Schooling
@@ -84,11 +91,36 @@ Positive coefficients:
 
 Negative coefficients:
 
-- Status
 - Adult Mortality
 - HIV AIDS
 - Alcohol
 - Under five deaths
+
+### Evaluating linear regression model
+
+```{r}
+predictions <- predict(model, newdata = test_data)
+```
+
+```{r}
+# Ewaluacja modelu
+
+#mse
+mse <- mean((predictions - test_data$Life.expectancy)^2)
+#mae
+mae <- mean(abs(predictions - test_data$Life.expectancy))
+#R^2
+ss_residual <- sum((test_data$Life.expectancy - predictions)^2)
+ss_total <- sum((test_data$Life.expectancy - mean(test_data$Life.expectancy))^2)
+r_squared <- 1 - (ss_residual / ss_total)
+
+# Wyświetlanie wyników
+cat("Mean Squared Error (MSE):", mse, "\n")
+cat("Mean Absolute Error (MAE):", mae, "\n")
+cat("R-squared:", r_squared, "\n")
+
+```
+
 
 ### Building logistic regression model
 To conduct logistic regression, first we have to transform life_expectancy variable to binary one. If the value is above median of life expectancy, the binary value is 1, if below is 0.
