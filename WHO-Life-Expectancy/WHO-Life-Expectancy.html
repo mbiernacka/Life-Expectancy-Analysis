@@ -711,6 +711,68 @@ cat(&quot;Mean Squared Error (MSE):&quot;, mse, &quot;\n&quot;)</code></pre>
 <pre class="r"><code>cat(&quot;R-squared:&quot;, r_squared, &quot;\n&quot;)</code></pre>
 <pre><code>## R-squared: 0.8092298</code></pre>
 </div>
+<div id="building-linear-regression-model-with-only-significant-variables" class="section level3">
+<h3>Building linear regression model with only significant
+variables</h3>
+<pre class="r"><code>model2 &lt;- lm(train_data$Life.expectancy ~ Adult.Mortality + infant.deaths + Alcohol + percentage.expenditure +
+              BMI + under.five.deaths + Total.expenditure + Diphtheria + HIV.AIDS + Income.composition.of.resources + Schooling,data = train_data)</code></pre>
+<pre class="r"><code>summary(model2)</code></pre>
+<pre><code>## 
+## Call:
+## lm(formula = train_data$Life.expectancy ~ Adult.Mortality + infant.deaths + 
+##     Alcohol + percentage.expenditure + BMI + under.five.deaths + 
+##     Total.expenditure + Diphtheria + HIV.AIDS + Income.composition.of.resources + 
+##     Schooling, data = train_data)
+## 
+## Residuals:
+##      Min       1Q   Median       3Q      Max 
+## -16.6999  -1.9902  -0.0458   2.1567  11.6721 
+## 
+## Coefficients:
+##                                   Estimate Std. Error t value Pr(&gt;|t|)    
+## (Intercept)                      5.238e+01  7.184e-01  72.917  &lt; 2e-16 ***
+## Adult.Mortality                 -1.628e-02  1.006e-03 -16.185  &lt; 2e-16 ***
+## infant.deaths                    8.599e-02  1.079e-02   7.966 3.53e-15 ***
+## Alcohol                         -6.386e-02  3.286e-02  -1.943  0.05220 .  
+## percentage.expenditure           4.787e-04  6.576e-05   7.279 5.79e-13 ***
+## BMI                              4.133e-02  6.098e-03   6.777 1.85e-11 ***
+## under.five.deaths               -6.574e-02  8.058e-03  -8.159 7.84e-16 ***
+## Total.expenditure                9.331e-02  4.401e-02   2.120  0.03416 *  
+## Diphtheria                       1.589e-02  4.864e-03   3.267  0.00112 ** 
+## HIV.AIDS                        -4.707e-01  1.949e-02 -24.152  &lt; 2e-16 ***
+## Income.composition.of.resources  1.039e+01  9.046e-01  11.483  &lt; 2e-16 ***
+## Schooling                        8.724e-01  6.390e-02  13.652  &lt; 2e-16 ***
+## ---
+## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1
+## 
+## Residual standard error: 3.505 on 1307 degrees of freedom
+## Multiple R-squared:  0.8407, Adjusted R-squared:  0.8394 
+## F-statistic: 627.3 on 11 and 1307 DF,  p-value: &lt; 2.2e-16</code></pre>
+<p>All variables are statistically significant.</p>
+</div>
+<div id="evaluating-linear-regression-model-with-only-significant-values" class="section level3">
+<h3>Evaluating linear regression model with only significant values</h3>
+<pre class="r"><code>predictions2 &lt;- predict(model2, newdata = test_data)</code></pre>
+<pre class="r"><code># Ewaluacja modelu
+
+#mse
+mse &lt;- mean((predictions2 - test_data$Life.expectancy)^2)
+#mae
+mae &lt;- mean(abs(predictions2 - test_data$Life.expectancy))
+#R^2
+ss_residual &lt;- sum((test_data$Life.expectancy - predictions2)^2)
+ss_total &lt;- sum((test_data$Life.expectancy - mean(test_data$Life.expectancy))^2)
+r_squared &lt;- 1 - (ss_residual / ss_total)
+
+# Wyświetlanie wyników
+cat(&quot;Mean Squared Error (MSE):&quot;, mse, &quot;\n&quot;)</code></pre>
+<pre><code>## Mean Squared Error (MSE): 15.74498</code></pre>
+<pre class="r"><code>cat(&quot;Mean Absolute Error (MAE):&quot;, mae, &quot;\n&quot;)</code></pre>
+<pre><code>## Mean Absolute Error (MAE): 3.081492</code></pre>
+<pre class="r"><code>cat(&quot;R-squared:&quot;, r_squared, &quot;\n&quot;)</code></pre>
+<pre><code>## R-squared: 0.8048154</code></pre>
+<p>Values of metrics are almost the same for both models.</p>
+</div>
 <div id="building-logistic-regression-model" class="section level3">
 <h3>Building logistic regression model</h3>
 <p>To conduct logistic regression, first we have to transform

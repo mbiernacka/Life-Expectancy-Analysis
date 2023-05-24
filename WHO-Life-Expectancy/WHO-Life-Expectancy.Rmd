@@ -121,6 +121,44 @@ cat("R-squared:", r_squared, "\n")
 
 ```
 
+### Building linear regression model with only significant variables
+
+```{r}
+model2 <- lm(train_data$Life.expectancy ~ Adult.Mortality + infant.deaths + Alcohol + percentage.expenditure +
+              BMI + under.five.deaths + Total.expenditure + Diphtheria + HIV.AIDS + Income.composition.of.resources + Schooling,data = train_data)
+```
+
+```{r}
+summary(model2)
+```
+
+All variables are statistically significant.
+
+### Evaluating linear regression model with only significant values
+
+```{r}
+predictions2 <- predict(model2, newdata = test_data)
+```
+
+```{r}
+# Ewaluacja modelu
+
+#mse
+mse <- mean((predictions2 - test_data$Life.expectancy)^2)
+#mae
+mae <- mean(abs(predictions2 - test_data$Life.expectancy))
+#R^2
+ss_residual <- sum((test_data$Life.expectancy - predictions2)^2)
+ss_total <- sum((test_data$Life.expectancy - mean(test_data$Life.expectancy))^2)
+r_squared <- 1 - (ss_residual / ss_total)
+
+# Wyświetlanie wyników
+cat("Mean Squared Error (MSE):", mse, "\n")
+cat("Mean Absolute Error (MAE):", mae, "\n")
+cat("R-squared:", r_squared, "\n")
+```
+
+Values of metrics are almost the same for both models. 
 
 ### Building logistic regression model
 To conduct logistic regression, first we have to transform life_expectancy variable to binary one. If the value is above median of life expectancy, the binary value is 1, if below is 0.
