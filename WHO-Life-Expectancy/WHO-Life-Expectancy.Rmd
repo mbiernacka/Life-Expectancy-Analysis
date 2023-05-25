@@ -19,6 +19,13 @@ dim(data)
 str(data)
 ```
 
+Variables in dataframe:
+
+```{r}
+names(data)
+```
+
+
 Dropping columns containing NA values:
 ```{r}
 data <- na.omit(data)
@@ -31,14 +38,25 @@ Dropping columns 'Country' and 'Year':
 data <- data[, -c(2,1)]
 head(data)
 ```
+```{r}
+summary(data)
+```
+
 Correlation between numerical attributes:
 ```{r}
+data <- as.data.frame(scale(data[,-1]))
 cor(data[,-1])
 ```
+
 ```{r}
 corrplot(cor(data[,-1]), method = 'color')
 ```
 
+Variables with higher correlations are:
+
+- thinness 1-19 and thinness 5-9 years
+- GDP and percentage expenditure
+- infant deaths and under five deaths
 
 ### Building linear regression model:
 
