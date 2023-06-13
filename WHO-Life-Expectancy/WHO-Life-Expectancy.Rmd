@@ -563,3 +563,78 @@ points(adjr_max, data_sum_bwd$adjr[adjr_max], col = "red", pch = 9)
 
 All of the considered metric for backwars selection give the same results as for forward selection.
 
+## Validation set selection
+
+```{r}
+#data <- data[,-20]
+n <- nrow(data)
+train <- sample(c(TRUE, FALSE), n, replace = TRUE)
+test <- !train
+data_bs_v <- regsubsets(Life.expectancy ~ ., data = data[train,], nvmax = 18)
+```
+
+```{r}
+predict.regsubsets <- function(object, newdata, id, ...) {
+  model_formula <- as.formula(object$call[[2]])
+  mat <- model.matrix(model_formula, newdata)
+  coefs <- coef(object, id = id)
+  mat[, names(coefs)] %*% coefs
+}
+```
+
+```{r}
+prediction_error <- function(i, model, subset) {
+  pred <- predict(model, data[subset,], id = i)
+  mean((data$Life.expectancy[subset] - pred)^2)
+}
+val_errors <- sapply(1:18, prediction_error, model = data_bs_v, subset = test)
+val_errors
+```
+
+To find optimal number of variables we look for the smallest error estimation on validation set. In this situation it is 14.
+
+Variables with "TRUE" are the variabled included in that model:
+
+```{r}
+summary(data_bs_v)$which[14, ]
+```
+
+Now we look for optimal 
+
+```{r}
+data_bs_v_opt <- regsubsets(Life.expectancy ~ ., data = data, nvmax = 14)
+data_bs_v_opt_sum <- summary(data_bs_v_opt)
+with(data_bs_v_opt_sum, data.frame(rsq, adjr2, cp, rss, outmat))
+```
+## K - cross validation selection
+
+```{r}
+k <- 10
+folds <- sample(1:k, n, replace = TRUE)
+val_err <- NULL
+for (j in 1:k) {
+  fit_bs <- regsubsets(Life.expectancy ~ ., data = data[folds != j,], nvmax = 18)
+  err <- sapply(1:18, prediction_error, model = fit_bs, subset = (folds == j))
+  val_err <- rbind(val_err, err)
+}
+```
+
+```{r}
+cv_errors <- colMeans(val_err)
+cv_errors
+```
+
+
+The smallest error for model with 15 variables.
+
+```{r}
+data_bs_cv <- regsubsets(Life.expectancy ~ ., data = data, nvmax = 15)
+
+with(summary(data_bs_cv), data.frame(rsq, adjr2, cp, rss, outmat))
+
+```
+```{r}
+summary(data_bs_cv)$which[15, ]
+
+```
+
