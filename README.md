@@ -27,4 +27,4 @@ Thinness 5-9 Years: Prevalence of thinness among children aged 5 to 9 years (per
 Income Composition of Resources: Human Development Index in terms of income composition of resources.
 Schooling: Number of years of schooling.
 
-The analysis id performed in R language.
+The analysis is performed in R language.
