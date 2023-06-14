@@ -9,6 +9,7 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 library(corrplot)
 library(caret)
+library(leaps)
 ```
 
 Reading data:
@@ -18,6 +19,37 @@ head(data)
 dim(data)
 str(data)
 ```
+
+Variables in dataframe:
+
+```{r}
+names(data)
+```
+Dataset Description
+The WHO Life Expectancy dataset consists of the following variables:
+
+- Country: Name of the country.
+- Year: Year of the observation.
+- Status: Development status of the country (Developed or Developing).
+- Life Expectancy: Average life expectancy in years.
+- Adult Mortality: Probability of dying between 15 and 60 years per 1000 population.
+- Infant Deaths: Number of infant deaths per 1000 population.
+- Alcohol: Alcohol consumption per capita (in liters of pure alcohol).
+- Percentage Expenditure: Expenditure on health as a percentage of GDP per capita.
+- Hepatitis B: Hepatitis B immunization coverage among 1-year-olds (percentage).
+- Measles: Number of reported measles cases per 1000 population.
+- BMI: Average Body Mass Index of the population.
+- Under-Five Deaths: Number of under-five deaths per 1000 population.
+- Polio: Polio immunization coverage among 1-year-olds (percentage).
+- Total Expenditure: General government expenditure on health as a percentage of total government expenditure.
+- Diphtheria: Diphtheria immunization coverage among 1-year-olds (percentage).
+- HIV/AIDS: Deaths per 1000 live births due to HIV/AIDS.
+- GDP: Gross Domestic Product per capita (in USD).
+- Population: Population size.
+- Thinness 1-19 Years: Prevalence of thinness among children and adolescents (percentage).
+- Thinness 5-9 Years: Prevalence of thinness among children aged 5 to 9 years (percentage).
+- Income Composition of Resources: Human Development Index in terms of income composition of resources.
+- Schooling: Number of years of schooling.
 
 Dropping columns containing NA values:
 ```{r}
@@ -31,25 +63,44 @@ Dropping columns 'Country' and 'Year':
 data <- data[, -c(2,1)]
 head(data)
 ```
+```{r}
+summary(data)
+```
+
 Correlation between numerical attributes:
 ```{r}
+data <- as.data.frame(scale(data[,-1]))
 cor(data[,-1])
 ```
+
 ```{r}
 corrplot(cor(data[,-1]), method = 'color')
 ```
 
+Variables with higher correlations are:
+
+- thinness 1-19 and thinness 5-9 years
+- GDP and percentage expenditure
+- infant deaths and under five deaths
 
 ### Building linear regression model:
 
+Splitting data into training and testing sets:
 
 ```{r}
-model <- lm(data$Life.expectancy ~ ., data = data)
+set.seed(213)
+train_indices <- sample(nrow(data), nrow(data) * 0.8)
+train_data <- data[train_indices, ]
+test_data <- data[-train_indices, ]
 ```
 
 ```{r}
-model
-model$coefficients
+model <- lm(train_data$Life.expectancy ~ ., data = train_data)
+```
+
+```{r}
+#model
+#model$coefficients
 ```
 ```{r}
 summary(model)
@@ -57,9 +108,8 @@ summary(model)
 
 Based on p-value statistically significant are:
 
-- Status
 - Adult Mortality
-- Indant deaths
+- Infant deaths
 - Alcohol
 - Percentage expenditure
 - BMI
@@ -74,7 +124,7 @@ It means that we should remove other variables from our model.
 
 Positive coefficients:
 
-- Indant deaths
+- Infant deaths
 - Percentage expenditure
 - Income
 - Schooling
@@ -84,11 +134,74 @@ Positive coefficients:
 
 Negative coefficients:
 
-- Status
 - Adult Mortality
 - HIV AIDS
 - Alcohol
 - Under five deaths
+
+### Evaluating linear regression model
+
+```{r}
+predictions <- predict(model, newdata = test_data)
+```
+
+```{r}
+# Ewaluacja modelu
+
+#mse
+mse <- mean((predictions - test_data$Life.expectancy)^2)
+#mae
+mae <- mean(abs(predictions - test_data$Life.expectancy))
+#R^2
+ss_residual <- sum((test_data$Life.expectancy - predictions)^2)
+ss_total <- sum((test_data$Life.expectancy - mean(test_data$Life.expectancy))^2)
+r_squared <- 1 - (ss_residual / ss_total)
+
+# Wyświetlanie wyników
+cat("Mean Squared Error (MSE):", mse, "\n")
+cat("Mean Absolute Error (MAE):", mae, "\n")
+cat("R-squared:", r_squared, "\n")
+
+```
+
+### Building linear regression model with only significant variables
+
+```{r}
+model2 <- lm(train_data$Life.expectancy ~ Adult.Mortality + infant.deaths + Alcohol + percentage.expenditure +
+              BMI + under.five.deaths + Total.expenditure + Diphtheria + HIV.AIDS + Income.composition.of.resources + Schooling,data = train_data)
+```
+
+```{r}
+summary(model2)
+```
+
+All variables are statistically significant.
+
+### Evaluating linear regression model with only significant values
+
+```{r}
+predictions2 <- predict(model2, newdata = test_data)
+```
+
+```{r}
+# Ewaluacja modelu
+
+#mse
+mse <- mean((predictions2 - test_data$Life.expectancy)^2)
+#mae
+mae <- mean(abs(predictions2 - test_data$Life.expectancy))
+#R^2
+ss_residual <- sum((test_data$Life.expectancy - predictions2)^2)
+ss_total <- sum((test_data$Life.expectancy - mean(test_data$Life.expectancy))^2)
+r_squared <- 1 - (ss_residual / ss_total)
+
+# Wyświetlanie wyników
+cat("Mean Squared Error (MSE):", mse, "\n")
+cat("Mean Absolute Error (MAE):", mae, "\n")
+cat("R-squared:", r_squared, "\n")
+```
+
+Values of metrics are almost the same for both models. 
 
 ### Building logistic regression model
 To conduct logistic regression, first we have to transform life_expectancy variable to binary one. If the value is above median of life expectancy, the binary value is 1, if below is 0.
@@ -236,4 +349,292 @@ cat("F1-Score:", f1_score, "\n")
 
 The results are slightly with in comparison to model with all variables
 
+
+
+
+############################################################################################################################################################################
+
+
+
+
+
+# Model selection
+
+To choose best variables for model we use regubsets method. We increase the nvmax, because our dataset has 18 variables. 
+
+```{r}
+data_bs <- regsubsets(Life.expectancy ~ .,data = data[,-20], nvmax = 18, method = "exhaustive")
+data_bs_sum <- summary(data_bs)
+with(data_bs_sum, data.frame(rsq, adjr2, cp, rss, outmat))
+#chcemy większe rsq, adjr2 oraz mniejsze cp, rss
+#chcemy jak najmniejsze BIC i AIC
+```
+By analyzing metrics we can choose what model works better. Metric R squared is increasing with every variable added to the model. Adjusted R Squared stops increasing with 15 variables. RSS metric is decreasing with every new variable. Cp stops decreasing in 12th model. We are assuming that model with 12 would be the best choice. Significant  variables in that model are:
+
+- Adult.Mortality
+- infant.deaths
+- Alcohol
+- percentage.expenditure
+- BMI
+- under.five.deaths
+- Total.expenditure
+- Diphtheria
+- HIV.AIDS
+- thinness.5.9.years
+- Income.composition.of.resources
+- Schooling
+
+```{r}
+coef(data_bs, id = 12)
+```
+
+#### BIC
+
+```{r}
+bic_min <- which.min(data_bs_sum$bic)
+bic_min
+data_bs_sum$bic[bic_min]
+plot(data_bs_sum$bic, xlab = "Number of variables", ylab = "BIC", col = "green",
+     type = "b", pch = 20)
+points(bic_min, data_bs_sum$bic[bic_min], col = "red", pch = 9)
+```
+Based on BIC metrics the best model is model with 9 variables.
+
+#### RSQ
+
+```{r}
+rsq_max <- which.max(data_bs_sum$rsq)
+rsq_max
+data_bs_sum$rsq[rsq_max]
+plot(data_bs_sum$rsq, xlab = "Number of variables", ylab = "RSQ", col = "green",
+     type = "b", pch = 20)
+points(rsq_max, data_bs_sum$rsq[rsq_max], col = "red", pch = 9)
+```
+
+Based on R Squared metric the best model is model with 18 variables.
+
+
+#### ADJR
+
+```{r}
+adjr_max <- which.max(data_bs_sum$adjr)
+adjr_max
+data_bs_sum$adjr[adjr_max]
+plot(data_bs_sum$adjr, xlab = "Number of variables", ylab = "ADJR", col = "green",
+     type = "b", pch = 20)
+points(adjr_max, data_bs_sum$adjr[adjr_max], col = "red", pch = 9)
+```
+
+Based on Adjusted R Squared metric the best model is model with 14 variables.
+
+
+#### CP
+
+```{r}
+cp_min <- which.min(data_bs_sum$cp)
+cp_min
+data_bs_sum$cp[cp_min]
+plot(data_bs_sum$cp, xlab = "Number of variables", ylab = "CP", col = "green",
+     type = "b", pch = 20)
+points(cp_min, data_bs_sum$cp[cp_min], col = "red", pch = 9)
+```
+
+Based on Cp metric the best model is model with 12 variables.
+
+
+
+### Backward and forward selection
+
+#### Forward
+
+```{r}
+data_fwd <- regsubsets(Life.expectancy ~ .,data = data[,-20], nvmax = 18, method = "forward")
+data_sum_fwd <- summary(data_fwd)
+with(data_sum_fwd, data.frame(rsq, adjr2, cp, rss, outmat))
+```
+```{r}
+# BIC
+bic_min <- which.min(data_sum_fwd$bic)
+bic_min
+data_sum_fwd$bic[bic_min]
+plot(data_sum_fwd$bic, xlab = "Number of variables", ylab = "BIC", col = "green",
+     type = "b", pch = 20)
+points(bic_min, data_sum_fwd$bic[bic_min], col = "red", pch = 9)
+```
+
+According to BIC metrics best model has 9 variables:
+
+- Adult.Mortality
+- infant.deaths
+- percentage.expenditure
+- BMI
+- under.five.deaths
+- Diphtheria
+- HIV.AIDS
+- Income.composition.of.resources
+- Schooling
+
+
+```{r}
+#RSQ
+cp_min <- which.min(data_sum_fwd$cp)
+cp_min
+data_sum_fwd$cp[cp_min]
+plot(data_sum_fwd$cp, xlab = "Number of variables", ylab = "CP", col = "green",
+     type = "b", pch = 20)
+points(cp_min, data_sum_fwd$cp[cp_min], col = "red", pch = 9)
+```
+
+According to R Squared metrics best model has 12 variables:
+
+- Adult.Mortality
+- infant.deaths
+- percentage.expenditure
+- BMI
+- under.five.deaths
+- Diphtheria
+- HIV.AIDS
+- Income.composition.of.resources
+- Schooling
+
+```{r}
+#AJDR
+adjr_max <- which.max(data_sum_fwd$adjr)
+adjr_max
+data_sum_fwd$adjr[adjr_max]
+plot(data_sum_fwd$adjr, xlab = "Number of variables", ylab = "ADJR", col = "green",
+     type = "b", pch = 20)
+points(adjr_max, data_sum_fwd$adjr[adjr_max], col = "red", pch = 9)
+```
+
+According to Adjusted R Squared metrics best model has 14 variables:
+
+- Adult.Mortality
+- infant.deaths
+- Alcohol
+- percentage.expenditure
+- Hepatitis
+- BMI
+- Polio
+- under.five.deaths
+- Total.expenditure
+- Diphtheria
+- HIV.AIDS
+- thinness.5.9.years
+- Income.composition.of.resources
+- Schooling
+
+
+
+#### Backward
+
+```{r}
+data_bwd <- regsubsets(Life.expectancy ~ .,data = data[,-20], nvmax = 15, method = "backward")
+data_sum_bwd <- summary(data_bwd)
+with(data_sum_bwd, data.frame(rsq, adjr2, cp, rss, outmat))
+```
+```{r}
+# BIC
+bic_min <- which.min(data_sum_bwd$bic)
+bic_min
+data_sum_bwd$bic[bic_min]
+plot(data_sum_bwd$bic, xlab = "Number of variables", ylab = "BIC", col = "green",
+     type = "b", pch = 20)
+points(bic_min, data_sum_bwd$bic[bic_min], col = "red", pch = 9)
+```
+```{r}
+#RSQ
+cp_min <- which.min(data_sum_bwd$cp)
+cp_min
+data_sum_bwd$cp[cp_min]
+plot(data_sum_bwd$cp, xlab = "Number of variables", ylab = "CP", col = "green",
+     type = "b", pch = 20)
+points(cp_min, data_sum_bwd$cp[cp_min], col = "red", pch = 9)
+```
+```{r}
+#AJDR
+adjr_max <- which.max(data_sum_bwd$adjr)
+adjr_max
+data_sum_bwd$adjr[adjr_max]
+plot(data_sum_bwd$adjr, xlab = "Number of variables", ylab = "ADJR", col = "green",
+     type = "b", pch = 20)
+points(adjr_max, data_sum_bwd$adjr[adjr_max], col = "red", pch = 9)
+```
+
+All of the considered metric for backwars selection give the same results as for forward selection.
+
+## Validation set selection
+
+```{r}
+#data <- data[,-20]
+n <- nrow(data)
+train <- sample(c(TRUE, FALSE), n, replace = TRUE)
+test <- !train
+data_bs_v <- regsubsets(Life.expectancy ~ ., data = data[train,], nvmax = 18)
+```
+
+```{r}
+predict.regsubsets <- function(object, newdata, id, ...) {
+  model_formula <- as.formula(object$call[[2]])
+  mat <- model.matrix(model_formula, newdata)
+  coefs <- coef(object, id = id)
+  mat[, names(coefs)] %*% coefs
+}
+```
+
+```{r}
+prediction_error <- function(i, model, subset) {
+  pred <- predict(model, data[subset,], id = i)
+  mean((data$Life.expectancy[subset] - pred)^2)
+}
+val_errors <- sapply(1:18, prediction_error, model = data_bs_v, subset = test)
+val_errors
+```
+
+To find optimal number of variables we look for the smallest error estimation on validation set. In this situation it is 14.
+
+Variables with "TRUE" are the variabled included in that model:
+
+```{r}
+summary(data_bs_v)$which[14, ]
+```
+
+Now we look for optimal 
+
+```{r}
+data_bs_v_opt <- regsubsets(Life.expectancy ~ ., data = data, nvmax = 14)
+data_bs_v_opt_sum <- summary(data_bs_v_opt)
+with(data_bs_v_opt_sum, data.frame(rsq, adjr2, cp, rss, outmat))
+```
+## K - cross validation selection
+
+```{r}
+k <- 10
+folds <- sample(1:k, n, replace = TRUE)
+val_err <- NULL
+for (j in 1:k) {
+  fit_bs <- regsubsets(Life.expectancy ~ ., data = data[folds != j,], nvmax = 18)
+  err <- sapply(1:18, prediction_error, model = fit_bs, subset = (folds == j))
+  val_err <- rbind(val_err, err)
+}
+```
+
+```{r}
+cv_errors <- colMeans(val_err)
+cv_errors
+```
+
+
+The smallest error for model with 15 variables.
+
+```{r}
+data_bs_cv <- regsubsets(Life.expectancy ~ ., data = data, nvmax = 15)
+
+with(summary(data_bs_cv), data.frame(rsq, adjr2, cp, rss, outmat))
+
+```
+```{r}
+summary(data_bs_cv)$which[15, ]
+
+```
 
