@@ -11,7 +11,8 @@ library(corrplot)
 library(caret)
 library(leaps)
 library(glmnet)
-library(mgcv)  
+library(mgcv) 
+library(tree)
 
 ```
 
@@ -21,6 +22,7 @@ data <- read.csv("Life-Expectancy-Data.csv")
 head(data)
 dim(data)
 str(data)
+
 ```
 
 Variables in dataframe:
@@ -72,6 +74,8 @@ summary(data)
 
 Correlation between numerical attributes:
 ```{r}
+data_not_scaled <- data
+data_not_scaled$Status <- as.factor(data_not_scaled$Status)
 data <- as.data.frame(scale(data[,-1]))
 cor(data[,-1])
 ```
@@ -784,4 +788,73 @@ par(mfrow = c(1, 3))
 plot(gam_model, col = "red", se = TRUE)
 ```
 <br> From the plots above we can see that the most sloping curves are for variables: infant deaths, under.five.deaths, HIV.AIDS, Income.composition.of.recources
+
+# Decsion trees
+
+
+We are constructing regression tree to predict life expectancy. For this we used not_scaled dataset because regression trees require scaling the data
+```{r}
+regression_tree <- tree(Life.expectancy ~ ., data= data_not_scaled)
+summary(regression_tree)
+```
+The most significant predictors that were used in creating the decision tree: 
+
+- Income.composition.of.resources
+- HIV.AIDS
+- Adult.Mortality
+- thinness..1.19.years
+
+Plotting the tree
+```{r}
+plot(regression_tree)
+text(regression_tree, cex = 0.7, adj = c(0, 0.5), pos = 3)
+```
+
+Calculating the test error
+```{r}
+set.seed(1)
+n <- nrow(data_not_scaled)
+train <- sample(n, n / 2)
+test <- -train
+regression_tree <- tree(Life.expectancy ~ ., data = data_not_scaled, subset = train)
+life_expectancy_pred <- predict(regression_tree, newdata = data_not_scaled[test,])
+```
+
+
+```{r}
+mean((life_expectancy_pred - data_not_scaled$Life.expectancy[test])^2)
+```
+The error is 11.3.  In this case, the MSE value of 11.3 implies that, on average, the predictions of the model deviate from the actual values by approximately 11 years.
+
+Choosing optimal subtree
+
+```{r}
+life_expectancy_cv <- cv.tree(regression_tree)
+plot(life_expectancy_cv$size, life_expectancy_cv$dev, type = "b", 
+     xlab = "Tree Size", ylab = "Cross-Validated Deviance")
+```
+
+
+We can see that for tree size bigger than 5, the cross-validated deviance does not drops significantly
+```{r}
+tree_pruned <- prune.tree(regression_tree, best = 5)
+plot(tree_pruned)
+text(tree_pruned)
+```
+```{r}
+life_expectancy_pred_pruned <- predict(tree_pruned, newdata = data_not_scaled[test,])
+mean((life_expectancy_pred_pruned - data_not_scaled$Life.expectancy[test])^2)
+```
+
+For pruned tree the MSE error is bigger and equald to 17.77 which means on average, the predictions of the model deviate from the actual values by approximately almost 18 years. The results are better for not pruned tree
+
+Creating more complicated tree. 
+```{r}
+regression_tree_deeper <- tree(Life.expectancy ~ ., data = data_not_scaled, subset = train, mindev = 0.0001)
+life_expectancy_pred_deeper <- predict(regression_tree_deeper, newdata = data_not_scaled[test,])
+mean((life_expectancy_pred_deeper - data_not_scaled$Life.expectancy[test])^2)
+```
+By reducing the mindev value, we allow the tree to become more complex. As shown abpw, this leads to a significant decrease in the mean squared error (MSE) compared to the two earlier trees.
+
+
 
