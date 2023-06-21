@@ -13,7 +13,7 @@ library(leaps)
 library(glmnet)
 library(mgcv) 
 library(tree)
-
+library(randomForest)
 ```
 
 Reading data:
@@ -370,14 +370,16 @@ The results are slightly with in comparison to model with all variables
 To choose best variables for model we use regubsets method. We increase the nvmax, because our dataset has 18 variables. 
 
 ```{r}
-data_bs <- regsubsets(Life.expectancy ~ .,data = data[,-20], nvmax = 18, method = "exhaustive")
+set.seed(123)
+data_bs <- regsubsets(Life.expectancy ~ .,data = data_not_scaled, nvmax = 19, method = "exhaustive")
 data_bs_sum <- summary(data_bs)
 with(data_bs_sum, data.frame(rsq, adjr2, cp, rss, outmat))
 #chcemy większe rsq, adjr2 oraz mniejsze cp, rss
 #chcemy jak najmniejsze BIC i AIC
 ```
-By analyzing metrics we can choose what model works better. Metric R squared is increasing with every variable added to the model. Adjusted R Squared stops increasing with 15 variables. RSS metric is decreasing with every new variable. Cp stops decreasing in 12th model. We are assuming that model with 12 would be the best choice. Significant  variables in that model are:
+By analyzing metrics we can choose what model works better. Metric R squared is increasing with every variable added to the model. Adjusted R Squared stops increasing with 15 variables. RSS metric is decreasing with every new variable. Cp stops decreasing in 13th model. We are assuming that model with 13 would be the best choice. Significant  variables in that model are:
 
+- StatusDeveloping
 - Adult.Mortality
 - infant.deaths
 - Alcohol
@@ -405,6 +407,7 @@ plot(data_bs_sum$bic, xlab = "Number of variables", ylab = "BIC", col = "green",
      type = "b", pch = 20)
 points(bic_min, data_bs_sum$bic[bic_min], col = "red", pch = 9)
 ```
+
 Based on BIC metrics the best model is model with 9 variables.
 
 #### RSQ
@@ -418,7 +421,7 @@ plot(data_bs_sum$rsq, xlab = "Number of variables", ylab = "RSQ", col = "green",
 points(rsq_max, data_bs_sum$rsq[rsq_max], col = "red", pch = 9)
 ```
 
-Based on R Squared metric the best model is model with 18 variables.
+Based on R Squared metric the best model is model with 19 variables.
 
 
 #### ADJR
@@ -432,7 +435,7 @@ plot(data_bs_sum$adjr, xlab = "Number of variables", ylab = "ADJR", col = "green
 points(adjr_max, data_bs_sum$adjr[adjr_max], col = "red", pch = 9)
 ```
 
-Based on Adjusted R Squared metric the best model is model with 14 variables.
+Based on Adjusted R Squared metric the best model is model with 15 variables.
 
 
 #### CP
@@ -446,7 +449,7 @@ plot(data_bs_sum$cp, xlab = "Number of variables", ylab = "CP", col = "green",
 points(cp_min, data_bs_sum$cp[cp_min], col = "red", pch = 9)
 ```
 
-Based on Cp metric the best model is model with 12 variables.
+Based on Cp metric the best model is model with 13 variables.
 
 
 
@@ -455,7 +458,7 @@ Based on Cp metric the best model is model with 12 variables.
 #### Forward
 
 ```{r}
-data_fwd <- regsubsets(Life.expectancy ~ .,data = data[,-20], nvmax = 18, method = "forward")
+data_fwd <- regsubsets(Life.expectancy ~ .,data = data_not_scaled, nvmax = 19, method = "forward")
 data_sum_fwd <- summary(data_fwd)
 with(data_sum_fwd, data.frame(rsq, adjr2, cp, rss, outmat))
 ```
@@ -492,8 +495,9 @@ plot(data_sum_fwd$cp, xlab = "Number of variables", ylab = "CP", col = "green",
 points(cp_min, data_sum_fwd$cp[cp_min], col = "red", pch = 9)
 ```
 
-According to R Squared metrics best model has 12 variables:
+According to R Squared metrics best model has 13 variables:
 
+- Status.Developing
 - Adult.Mortality
 - infant.deaths
 - percentage.expenditure
@@ -514,8 +518,9 @@ plot(data_sum_fwd$adjr, xlab = "Number of variables", ylab = "ADJR", col = "gree
 points(adjr_max, data_sum_fwd$adjr[adjr_max], col = "red", pch = 9)
 ```
 
-According to Adjusted R Squared metrics best model has 14 variables:
+According to Adjusted R Squared metrics best model has 15 variables:
 
+- Status.Developing
 - Adult.Mortality
 - infant.deaths
 - Alcohol
@@ -536,7 +541,7 @@ According to Adjusted R Squared metrics best model has 14 variables:
 #### Backward
 
 ```{r}
-data_bwd <- regsubsets(Life.expectancy ~ .,data = data[,-20], nvmax = 15, method = "backward")
+data_bwd <- regsubsets(Life.expectancy ~ .,data = data_not_scaled, nvmax = 19, method = "backward")
 data_sum_bwd <- summary(data_bwd)
 with(data_sum_bwd, data.frame(rsq, adjr2, cp, rss, outmat))
 ```
@@ -574,10 +579,15 @@ All of the considered metric for backwars selection give the same results as for
 
 ```{r}
 #data <- data[,-20]
-n <- nrow(data)
+# n <- nrow(data[,-20])
+# train <- sample(c(TRUE, FALSE), n, replace = TRUE)
+# test <- !train
+# data_bs_v <- regsubsets(Life.expectancy ~ ., data = data[train,-20], nvmax = 18)
+
+n <- nrow(data_not_scaled)
 train <- sample(c(TRUE, FALSE), n, replace = TRUE)
 test <- !train
-data_bs_v <- regsubsets(Life.expectancy ~ ., data = data[train,], nvmax = 18)
+data_bs_v <- regsubsets(Life.expectancy ~ ., data = data_not_scaled, nvmax = 19)
 ```
 
 ```{r}
@@ -590,38 +600,40 @@ predict.regsubsets <- function(object, newdata, id, ...) {
 ```
 
 ```{r}
+set.seed(123)
 prediction_error <- function(i, model, subset) {
-  pred <- predict(model, data[subset,], id = i)
-  mean((data$Life.expectancy[subset] - pred)^2)
+  pred <- predict(model, data_not_scaled[subset,], id = i)
+  mean((data_not_scaled$Life.expectancy[subset] - pred)^2)
 }
-val_errors <- sapply(1:18, prediction_error, model = data_bs_v, subset = test)
+val_errors <- sapply(1:19, prediction_error, model = data_bs_v, subset = test)
 val_errors
 ```
 
-To find optimal number of variables we look for the smallest error estimation on validation set. In this situation it is 14.
+To find optimal number of variables we look for the smallest error estimation on validation set. In this situation it is 18.
 
 Variables with "TRUE" are the variabled included in that model:
 
 ```{r}
-summary(data_bs_v)$which[14, ]
+summary(data_bs_v)$which[18, ]
 ```
 
 Now we look for optimal 
 
 ```{r}
-data_bs_v_opt <- regsubsets(Life.expectancy ~ ., data = data, nvmax = 14)
+data_bs_v_opt <- regsubsets(Life.expectancy ~ ., data = data_not_scaled, nvmax = 18)
 data_bs_v_opt_sum <- summary(data_bs_v_opt)
 with(data_bs_v_opt_sum, data.frame(rsq, adjr2, cp, rss, outmat))
 ```
 ## K - cross validation selection
 
 ```{r}
+set.seed(123)
 k <- 10
 folds <- sample(1:k, n, replace = TRUE)
 val_err <- NULL
 for (j in 1:k) {
-  fit_bs <- regsubsets(Life.expectancy ~ ., data = data[folds != j,], nvmax = 18)
-  err <- sapply(1:18, prediction_error, model = fit_bs, subset = (folds == j))
+  fit_bs <- regsubsets(Life.expectancy ~ ., data = data_not_scaled[folds != j,], nvmax = 19)
+  err <- sapply(1:19, prediction_error, model = fit_bs, subset = (folds == j))
   val_err <- rbind(val_err, err)
 }
 ```
@@ -635,7 +647,7 @@ cv_errors
 The smallest error for model with 15 variables.
 
 ```{r}
-data_bs_cv <- regsubsets(Life.expectancy ~ ., data = data, nvmax = 15)
+data_bs_cv <- regsubsets(Life.expectancy ~ ., data = data_not_scaled, nvmax = 15)
 
 with(summary(data_bs_cv), data.frame(rsq, adjr2, cp, rss, outmat))
 
@@ -857,4 +869,51 @@ mean((life_expectancy_pred_deeper - data_not_scaled$Life.expectancy[test])^2)
 By reducing the mindev value, we allow the tree to become more complex. As shown abpw, this leads to a significant decrease in the mean squared error (MSE) compared to the two earlier trees.
 
 
+# Random Forest
 
+Building the model:
+
+```{r}
+set.seed(213)
+train_indices <- sample(nrow(data_not_scaled), nrow(data_not_scaled) * 0.8)
+train_data_not_scaled <- data_not_scaled[train_indices, ]
+test_data_not_scaled <- data_not_scaled[-train_indices, ]
+```
+
+
+```{r} 
+set.seed(2) 
+model_rf <- randomForest(Life.expectancy ~., data = train_data_not_scaled, importance = TRUE) 
+```
+
+```{r} 
+model_rf
+```
+
+Default model has 500 trees and takes 6 random variables while splitting every tree. MSE on training data is 3.35 which is satisfying result. Model explains 96% of variance.
+```{r} 
+predict_rf <- predict(model_rf, newdata = test_data_not_scaled) 
+mean((predict_rf - test_data_not_scaled$Life.expectancy)^2) 
+```
+
+MSE on testing data is very similar to MSE on training data - 3.6.
+
+```{r} 
+model_rf$importance 
+```
+```{r} 
+varImpPlot(model_rf) 
+```
+
+From the list and plots above we see that:
+
+- "Income.composition.of.resources" - It has high %IncMSE  and the highest IncNodePurity. This indicates that it is very important variable for the model.
+
+- "Adult.Mortality" - has the highest %IncMSE  and high IncNodePurity , suggesting its high importance for prediction.
+
+- "HIV.AIDS" - has a high %IncMSE  and high IncNodePurity, suggesting its importance in the model.
+
+- "Schooling" and "Total.expenditure" have 4th place each according to metrices. 
+```{r} 
+#The value of %IncMSE for a given predictor represents the percentage increase in mean squared error when that predictor is randomly rearranged in the training data and re-prediction is performed. Higher values of %IncMSE for a predictor indicate that this predictor is more important for model prediction. #The IncNodePurity value for a given predictor measures the increment of node purity when the tree is partitioned according to that predictor.
+```
