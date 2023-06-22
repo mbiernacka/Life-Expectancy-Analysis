@@ -15,7 +15,7 @@ library(mgcv)
 library(tree)
 library(randomForest)
 ```
-
+# Data preparation
 Reading data:
 ```{r}
 data <- read.csv("Life-Expectancy-Data.csv")
@@ -240,7 +240,7 @@ logistic_model <- glm(Life.expectancy.binary ~ . -Life.expectancy, data = train_
 # summary of the model
 summary(logistic_model)
 ```
-Based on p-value statistically significant are 10 variables from our model. Other variables we should remove to obtain better results
+Based on p-value statistically significant are 9 variables from our model. Other variables we should remove to obtain better results
 Variables statistically significant: 
 
 - Adult Mortality
@@ -249,6 +249,7 @@ Variables statistically significant:
 - Under five deaths
 - Total.expenditure 
 - HIV AIDS
+- thinness..1.19.years 
 - Income
 - Schooling
 
@@ -266,7 +267,7 @@ Variables with negative coefficients:
 - Under five deaths
 - Total.expenditure 
 - HIV AIDS
-- thinness.5.9.years  
+
 
 ### Evaluating logistic regression model
 ```{r}
@@ -275,9 +276,6 @@ probabilites <- predict(logistic_model, newdata = test_data, type = "response")
 predictions <- ifelse(probabilites > 0.5, 1, 0)
 ```
 
-```{r}
-
-```
 
 ```{r}
 # Create a confusion matrix
@@ -312,7 +310,7 @@ The logistic regression model just predict if value is above or below the genera
 ```{r}
 # Creating the logistic regression model
 logistic_model_2 <- glm(Life.expectancy.binary ~ Adult.Mortality + infant.deaths + percentage.expenditure +
-                        under.five.deaths + Total.expenditure + HIV.AIDS +
+                        under.five.deaths + Total.expenditure + HIV.AIDS +  
                         thinness..1.19.years + Income.composition.of.resources + Schooling,
                       data = train_data, family = binomial)
 ```
@@ -354,8 +352,11 @@ cat("Recall:", recall, "\n")
 cat("F1-Score:", f1_score, "\n")
 ```
 
-The results are slightly with in comparison to model with all variables
+The results are slightly worse in comparison to model with all variables.
 
+```{r}
+data <- data[, -ncol(data)]
+```
 
 
 
@@ -660,13 +661,14 @@ summary(data_bs_cv)$which[15, ]
 Preparing the data for regularization.
 ```{r}
 
-X <- model.matrix(Life.expectancy ~ ., data = data)[, -1]
+X <- model.matrix(Life.expectancy ~ ., data = data_not_scaled)[, -1]
 y <- data$Life.expectancy
 ```
 
-# Ridge regression
+## Ridge regression
 Performing regularization for different lambdas, the lambda sequence is descending.
 ```{r}
+# Lambda determines the amount of penalty added to the objective function in relation to the coefficient values of the model.
 lambda_grid <- 10^seq(10, -2, length.out = 100)
 fit_ridge <- glmnet(X, y, alpha = 0, lambda = lambda_grid)
 ```
@@ -801,7 +803,7 @@ plot(gam_model, col = "red", se = TRUE)
 ```
 <br> From the plots above we can see that the most sloping curves are for variables: infant deaths, under.five.deaths, HIV.AIDS, Income.composition.of.recources
 
-# Decsion trees
+# Decision trees
 
 
 We are constructing regression tree to predict life expectancy. For this we used not_scaled dataset because regression trees require scaling the data
